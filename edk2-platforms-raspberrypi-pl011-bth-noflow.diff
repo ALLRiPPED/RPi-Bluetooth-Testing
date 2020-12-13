@@ -1,0 +1,100 @@
+diff --git a/Platform/RaspberryPi/AcpiTables/Dbg2.aslc b/Platform/RaspberryPi/AcpiTables/Dbg2.aslc
+index e3f2adae..0cd4c591 100644
+--- a/Platform/RaspberryPi/AcpiTables/Dbg2.aslc
++++ b/Platform/RaspberryPi/AcpiTables/Dbg2.aslc
+@@ -23,12 +23,12 @@
+ #define RPI_DBG2_NUMBER_OF_GENERIC_ADDRESS_REGISTERS    1
+ #define RPI_DBG2_NAMESPACESTRING_FIELD_SIZE             15
+ 
+-#if (RPI_MODEL == 4)
+-#define RPI_UART_INTERFACE_TYPE                         EFI_ACPI_DBG2_PORT_SUBTYPE_SERIAL_ARM_PL011_UART
+-#define RPI_UART_BASE_ADDRESS                           BCM2836_PL011_UART_BASE_ADDRESS
+-#define RPI_UART_LENGTH                                 BCM2836_PL011_UART_LENGTH
+-#define RPI_UART_STR                                    { '\\', '_', 'S', 'B', '.', 'G', 'D', 'V', '0', '.', 'U', 'R', 'T', '0', 0x00 }
+-#else
++//#if (RPI_MODEL == 4)
++//#define RPI_UART_INTERFACE_TYPE                         EFI_ACPI_DBG2_PORT_SUBTYPE_SERIAL_ARM_PL011_UART
++//#define RPI_UART_BASE_ADDRESS                           BCM2836_PL011_UART_BASE_ADDRESS
++//#define RPI_UART_LENGTH                                 BCM2836_PL011_UART_LENGTH
++//#define RPI_UART_STR                                    { '\\', '_', 'S', 'B', '.', 'G', 'D', 'V', '0', '.', 'U', 'R', 'T', '0', 0x00 }
++//#else
+ #define RPI_UART_INTERFACE_TYPE                         EFI_ACPI_DBG2_PORT_SUBTYPE_SERIAL_BCM2835_UART
+ #define RPI_UART_BASE_ADDRESS                           BCM2836_MINI_UART_BASE_ADDRESS
+ #define RPI_UART_LENGTH                                 BCM2836_MINI_UART_LENGTH
+@@ -36,7 +36,7 @@
+ // RPI_UART_STR should match the value used Uart.asl
+ //
+ #define RPI_UART_STR                                    { '\\', '_', 'S', 'B', '.', 'G', 'D', 'V', '0', '.', 'U', 'R', 'T', 'M', 0x00 }
+-#endif
++//#endif
+ 
+ typedef struct {
+   EFI_ACPI_DBG2_DEBUG_DEVICE_INFORMATION_STRUCT         Dbg2Device;
+diff --git a/Platform/RaspberryPi/AcpiTables/Spcr.aslc b/Platform/RaspberryPi/AcpiTables/Spcr.aslc
+index 07df3a71..345f4a42 100644
+--- a/Platform/RaspberryPi/AcpiTables/Spcr.aslc
++++ b/Platform/RaspberryPi/AcpiTables/Spcr.aslc
+@@ -19,15 +19,15 @@
+ #define RPI_UART_FLOW_CONTROL_NONE           0
+ 
+ // Prefer PL011 serial output on the Raspberry Pi 4
+-#if (RPI_MODEL == 4)
+-#define RPI_UART_INTERFACE_TYPE              EFI_ACPI_SERIAL_PORT_CONSOLE_REDIRECTION_TABLE_INTERFACE_TYPE_ARM_PL011_UART
+-#define RPI_UART_BASE_ADDRESS                BCM2836_PL011_UART_BASE_ADDRESS
+-#define RPI_UART_INTERRUPT                   BCM2836_PL011_UART_INTERRUPT
+-#else
++//#if (RPI_MODEL == 4)
++//#define RPI_UART_INTERFACE_TYPE              EFI_ACPI_SERIAL_PORT_CONSOLE_REDIRECTION_TABLE_INTERFACE_TYPE_ARM_PL011_UART
++//#define RPI_UART_BASE_ADDRESS                BCM2836_PL011_UART_BASE_ADDRESS
++//#define RPI_UART_INTERRUPT                   BCM2836_PL011_UART_INTERRUPT
++//#else
+ #define RPI_UART_INTERFACE_TYPE              EFI_ACPI_SERIAL_PORT_CONSOLE_REDIRECTION_TABLE_INTERFACE_TYPE_BCM2835_UART
+ #define RPI_UART_BASE_ADDRESS                BCM2836_MINI_UART_BASE_ADDRESS
+ #define RPI_UART_INTERRUPT                   BCM2836_MINI_UART_INTERRUPT
+-#endif
++//#endif
+ STATIC EFI_ACPI_SERIAL_PORT_CONSOLE_REDIRECTION_TABLE Spcr = {
+   ACPI_HEADER (
+     EFI_ACPI_6_3_SERIAL_PORT_CONSOLE_REDIRECTION_TABLE_SIGNATURE,
+diff --git a/Platform/RaspberryPi/AcpiTables/Uart.asl b/Platform/RaspberryPi/AcpiTables/Uart.asl
+index 81ae6711..38c0b7f5 100644
+--- a/Platform/RaspberryPi/AcpiTables/Uart.asl
++++ b/Platform/RaspberryPi/AcpiTables/Uart.asl
+@@ -29,6 +29,12 @@ Device (URT0)
+   {
+     MEMORY32FIXED (ReadWrite, 0, BCM2836_PL011_UART_LENGTH, RMEM)
+     Interrupt (ResourceConsumer, Level, ActiveHigh, Exclusive) { BCM2836_PL011_UART_INTERRUPT }
++
++    PinFunction (Exclusive, PullDown, BCM_ALT3, "\\_SB.GDV0.GPI0", 0, ResourceConsumer, , ) { 32, 33 }
++
++    // fake the CTS signal as we don't support HW flow control yet
++    // BCM_ALT2 is set as output (low) by default
++    PinFunction (Exclusive, PullNone, BCM_ALT2, "\\_SB.GDV0.GPI0", 0, ResourceConsumer, , ) { 31 }
+   })
+   Method (_CRS, 0x0, Serialized)
+   {
+@@ -126,11 +132,11 @@ Device(BTH0)
+                        //   no flow control.
+         16,            // ReceiveBufferSize
+         16,            // TransmitBufferSize
+-#if (RPI_MODEL == 4)
+-        "\\_SB.GDV0.URTM",  // ResourceSource:
+-#else
++//#if (RPI_MODEL == 4)
++//        "\\_SB.GDV0.URTM",  // ResourceSource:
++//#else
+         "\\_SB.GDV0.URT0",  // ResourceSource:
+-#endif
++//#endif
+                        //   UART bus controller name
+         ,              // ResourceSourceIndex: assumed to be 0
+         ,              // ResourceUsage: assumed to be
+@@ -142,7 +148,7 @@ Device(BTH0)
+       //
+       // RPIQ connection for BT_ON/OFF
+       //
+-      GpioIO (Shared, PullUp, 0, 0, IoRestrictionNone, "\\_SB.GDV0.RPIQ", 0, ResourceConsumer, , ) { 128 }
++//      GpioIO (Shared, PullUp, 0, 0, IoRestrictionNone, "\\_SB.GDV0.RPIQ", 0, ResourceConsumer, , ) { 128 }
+     })
+     Return (RBUF)
+   }
